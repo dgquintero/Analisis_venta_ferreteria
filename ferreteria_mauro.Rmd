@@ -1,0 +1,176 @@
+---
+title: "proyecto_ferreteria_mauro"
+output:
+  pdf_document: default
+  html_document: default
+---
+Base de datos con la información de venta de 6 meses de la ferreteria y variedades Mauro 
+donde se pretende realizar un analisis de la canasta de mercado teniendo las siguientes variables:
+
+id_documento, id cliente, nombre del cliente, item_id, item_nombre, Precio unitario, Cantidad, nombre_vendedor, fecha de compra, forma_de_pago.
+
+
+#---------------Cargamos la base de datos y los paquetes que necesitamos usar durantes el proyecto------------
+
+```{r}
+#llamo a las librerias necesarias para realizar el modelo
+library("readr")
+library("stringr")
+install.packages("grid")
+library("grid")
+library("tidyr")
+library("reshape2")
+library("data.table")
+# lib for Apriori Algorithm
+library("arules")
+library("arulesViz")
+library("methods")
+library("lubridate")
+library("tidyverse")
+install.packages("DataExplorer")
+library("DataExplorer")
+getwd()
+setwd("/Users/danielgustavoquinteroocampo/Desktop/Data Scientist-EANT")
+
+
+######### Cargamos el data set con las información de ventas durante 6 meses 
+
+datosmauro<-read.csv("ventas_ferro.csv")
+?read.transactions
+#??plot_str
+#plot_str(datosmauro)
+
+plot(datosmauro$Nombre.Cliente)
+summary(datosmauro$Documento.Ventas)
+?summarise
+str(datosmauro)
+
+```
+Convertimos la columna fecha a Date y creamos la columna ventas total con la multiplicación del precio unitario y la cantidad
+
+```{r}
+datosmauro$Fecha<-ymd(datosmauro$Fecha)
+#datosmauro<-mutate(datosmauro,) crear nueva columna con la multiplicacion de precio unitario * por la cantidad llevada del producto
+```
+
+#----------Exploración de datos, miramos si existen missing valeus dentro del dataset------------- 
+```{r}
+introduce(datosmauro)
+plot_missing(datosmauro)
+plot_bar(datosmauro)
+```
+
+Si se quiere analizar las transacciones realizadas y coocurrencias de los productos en los tiquetes de compra se realiza un dataset a parte con el codigo del item y el codigo del documento 
+
+La siguiente prueba dejó las dos columnas del codigo del item y del numero de la transacción como valores numericos lo cual permitió crear la matriz de transacciones
+```{r}
+datosmauro_1<-datosmauro[,c(1,6)]
+summary(datosmauro_1)
+```
+Creamos la matriz de transacciones 
+```{r}
+table(datosmauro_1$Documento.Ventas)
+txn_mauro_1<- split(datosmauro_1[,2],datosmauro_1[,1])
+txn_mauro_1<-as(txn_mauro_1,"transactions")
+summary(txn_mauro_1)
+inspect(txn_mauro_1)
+?summary
+transactionInfo(txn_mauro_1)
+```
+#Graficamos los 20 ítems que más aparecen en las transacciones
+```{r}
+
+itemFrequencyPlot(txn_mauro_1,topN=25,type="absolute")
+
+
+```
+Creamos las reglas de asociación
+```{r}
+?apriori
+############################
+table(datosmauro_1$Item)
+x_mauro<-c(864)
+
+
+reglas_mauro<-apriori(txn_mauro_1,parameter = list(support=0.01,smax=1,confidence=0.80,maxlen=5, minlen=1),appearance = list(rhs=x_mauro,default="lhs"))
+
+
+```
+
+
+```{r}
+summary(reglas_mauro)
+inspect(reglas_mauro)
+datareglas_mauro<-DATAFRAME(reglas_mauro,separate = TRUE)
+plot(reglas_mauro, method = 'graph')
+
+
+```
+Graficamos las reglas
+```{r}
+# visualizing rules 
+png(filename="reglas.png")
+plot(reglas_mauro)
+dev.off()
+
+
+```
+Otra forma de visualizar las transacciones si se tiene muchas reglas creando un amtriz la cual nos facilita la interpretación.
+```{r}
+plot(reglas_mauro, method = 'grouped', max = 25)
+```
+
+
+
+#--------------Para generar todas las reglas posibles se realiza de la siguiente forma-----------------
+
+
+```{r}
+rules_mauro <- apriori(txn_mauro_1, parameter = list(supp = 0.005, conf = 0.8))
+
+summary(rules_mauro)
+inspect(rules_mauro)
+datareglas_mauro<-DATAFRAME(rules_mauro,separate = TRUE)
+
+plot(rules_mauro)
+
+```
+Ahora visualizamos las reglas
+```{r}
+plot(rules_mauro, method = 'graph', max = 25)
+```
+Otra forma de visualizar las transacciones si se tiene muchas reglas creando un amtriz la cual nos facilita la interpretación.
+```{r}
+plot(rules_mauro, method = 'grouped', max = 25)
+```
+
+
+
+
+#------------------------------Correr el modelo con los nombres del item------------------------------
+```{r}
+install.packages("devtools")
+library("devtools")
+install_github("mhahsler/arulesViz")
+datosmauro_nuevo<-datosmauro[,c(1,7)]
+txn_mauro_nuevo<- split(datosmauro_nuevo[,2],datosmauro_nuevo[,1])
+txn_mauro_nuevo<-as(txn_mauro_nuevo,"transactions")
+summary(txn_mauro_nuevo)
+inspect(txn_mauro_nuevo)
+
+```
+
+```{r}
+rules_mauro_nuevo <- apriori(txn_mauro_nuevo, parameter = list(supp = 0.005, conf = 0.8))
+datareglas_mauro_nuevo<-DATAFRAME(rules_mauro_nuevo,separate = TRUE)
+
+summary(rules_mauro_nuevo)
+inspect(rules_mauro_nuevo)
+```
+visualizamos las reglas
+```{r}
+plot(rules_mauro_nuevo, method = 'graph', max = 25)
+```
+
+
+
